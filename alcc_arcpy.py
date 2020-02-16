@@ -1,3 +1,10 @@
+#########################################################
+# Title: Automated Landcover Classification Function    #
+# Author: Owen Smith                                    #
+# License: GNU v3.0                                     #
+# Email: ocsmit7654@ung.edu                             #
+#########################################################
+
 import arcpy
 from arcpy.sa import *
 import os
@@ -26,17 +33,17 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     tir = Raster(tir_path)
 
     # Output classifications
-    savi_out = out_dir + "SAVI.tif"
+    savi_out = "%s/SAVI.tif" % out_dir
     SAVI = Float(((nir - red) / (nir + red + soil_brightness)) *
                  (1 + soil_brightness))
     SAVI.save(savi_out)
 
-    aweish_out = out_dir + "AWEIsh.tif"
+    aweish_out = "%s/AWEIsh.tif" % out_dir
     AWEIsh = Float((blue + 2.5 * green - 1.5 * (nir + swir1) - 0.25 * swir2) /
                    (blue + green + nir + swir1 + swir2))
     AWEIsh.save(aweish_out)
 
-    ebbi_out = out_dir + "EBBI.tif"
+    ebbi_out = "%s/EBBI.tif" % out_dir
     EBBI = Float(swir1 - nir / 10 * (SquareRoot(swir1 + tir)))
     EBBI.save(ebbi_out)
 
