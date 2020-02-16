@@ -1,9 +1,9 @@
-#########################################################
-# Title: Automated Landcover Classification Function    #
-# Author: Owen Smith                                    #
-# License: GNU v3.0                                     #
-# Email: ocsmit7654@ung.edu                             #
-#########################################################
+################################################################################
+# Title: Automated Landcover Classification Function                           #
+# Author: Owen Smith                                                           #
+# License: GNU v3.0                                                            #
+# Email: ocsmit7654@ung.edu                                                    #
+################################################################################
 
 import arcpy
 from arcpy.sa import *
@@ -11,12 +11,23 @@ import os
 from glob import glob
 
 
-def alcc(landsat_dir, out_dir, soil_brightness=0.5):
+def alcc(landsat_dir, out_dir):
+    '''
+    landsat_dir 'str': Input landsat data directory.
+    out_dir: 'str':  Directory where all outputs will be saved.
+
+    final output 'out_dir/ALCC.tif'
+    '''
+    print('ALCC started.')
     arcpy.env.overwriteOutput = True
     arcpy.env.mask = None
 
+    if not os.path.exists(landsat_dir):
+        print('Input landsat directory does not exist.')
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
     blue_path = glob(landsat_dir + "/*B2*")
-    print(blue_path)
     green_path = glob(landsat_dir + "/*B3*")
     red_path = glob(landsat_dir + "/*B4*")
     nir_path = glob(landsat_dir + "/*B5*")
@@ -34,10 +45,9 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     tir = Raster(tir_path[0])
 
     # Output classifications
-    savi_out = "%s/SAVI.tif" % out_dir
-    SAVI = Float(((nir - red) / (nir + red + soil_brightness)) *
-                 (1 + soil_brightness))
-    SAVI.save(savi_out)
+    arvi_out = "%s/ARVI.tif" % out_dir
+    arvi = Float((nir - (2 * red) + blue) / nir + (2 * red) + blue)
+    arvi.save(arvi_out)
 
     aweish_out = "%s/AWEIsh.tif" % out_dir
     AWEIsh = Float((blue + 2.5 * green - 1.5 * (nir + swir1) - 0.25 * swir2) /
@@ -67,44 +77,44 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     land_raster.save(aweish_land)
 
     # Vegetation
-    savi_nowater = "%s/SAVI_nw.tif" % out_dir
-    savi_raster = arcpy.ia.Plus(savi_out, aweish_land)
-    savi_raster.save(savi_nowater)
+    arvi_nowater = "%s/ARVI_nw.tif" % out_dir
+    arvi_raster = arcpy.ia.Plus(arvi_out, aweish_land)
+    arvi_raster.save(arvi_nowater)
 
-    class_savi = "%s/class_NDVI.tif" % out_dir
+    class_arvi = "%s/class_ARVI.tif" % out_dir
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(
-        savi_nowater, 6, 2, 2, None)
-    iso_unsupervised.save(class_savi)
+        arvi_nowater, 5, 2, 2, None)
+    iso_unsupervised.save(class_arvi)
 
     low_veg = "%s/low_veg.tif" % out_dir
-    lowveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value = 3")
+    lowveg_raster = arcpy.sa.ExtractByAttributes(class_arvi, "Value = 2")
     lowveg_raster.save(low_veg)
 
     high_veg = "%s/high_veg.tif" % out_dir
-    highveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value > 3")
+    highveg_raster = arcpy.sa.ExtractByAttributes(class_arvi, "Value = 1")
     highveg_raster.save(high_veg)
 
-    savi_nv = "%s/SAVI_nv.tif" % out_dir
-    noveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value < 3")
-    noveg_raster.save(savi_nv)
+    arvi_nv = "%s/arvi_nv.tif" % out_dir
+    noveg_raster = arcpy.sa.ExtractByAttributes(class_arvi, "Value > 2")
+    noveg_raster.save(arvi_nv)
 
     # Bare earth and built up
     ebbi_only = "%s/EBBI_only.tif" % out_dir
-    EBBI_raster = arcpy.ia.Plus(ebbi_out, savi_nv)
+    EBBI_raster = arcpy.ia.Plus(ebbi_out, arvi_nv)
     EBBI_raster.save(ebbi_only)
 
     class_ebbi = "%s/class_EBBI.tif" % out_dir
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(ebbi_only,
-                                                                     5, 2, 2,
+                                                                     3, 2, 2,
                                                                      None)
     iso_unsupervised.save(class_ebbi)
 
     built_up = "%s/built_up.tif" % out_dir
-    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value <= 2")
+    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value = 3")
     builtup_raster.save(built_up)
 
     barren = "%s/barren.tif" % out_dir
-    barren_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value >= 3")
+    barren_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value < 3")
     barren_raster.save(barren)
 
     cst = 1
@@ -149,4 +159,8 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
         "LAST",
         "FIRST")
 
+    del_rast = [water, aweish_land, arvi_nowater, high_veg, low_veg, arvi_nv,
+                barren, built_up, ebbi_only]
+    for i in del_rast:
+        arcpy.Delete_management(i)
     print('Completed.')
