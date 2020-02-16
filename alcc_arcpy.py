@@ -16,6 +16,7 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     arcpy.env.mask = None
 
     blue_path = glob(landsat_dir + "/*B2*")
+    print(blue_path)
     green_path = glob(landsat_dir + "/*B3*")
     red_path = glob(landsat_dir + "/*B4*")
     nir_path = glob(landsat_dir + "/*B5*")
@@ -23,14 +24,14 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     swir2_path = glob(landsat_dir + "/*B7*")
     tir_path = glob(landsat_dir + "/*B10*")
 
-    # Read as rasters
-    blue = Raster(blue_path)
-    green = Raster(green_path)
-    red = Raster(red_path)
-    nir = Raster(nir_path)
-    swir1 = Raster(swir1_path)
-    swir2 = Raster(swir2_path)
-    tir = Raster(tir_path)
+    # Read as raster
+    blue = Raster(blue_path[0])
+    green = Raster(green_path[0])
+    red = Raster(red_path[0])
+    nir = Raster(nir_path[0])
+    swir1 = Raster(swir1_path[0])
+    swir2 = Raster(swir2_path[0])
+    tir = Raster(tir_path[0])
 
     # Output classifications
     savi_out = "%s/SAVI.tif" % out_dir
@@ -48,7 +49,7 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     EBBI.save(ebbi_out)
 
     # Water
-    class_aweish = out_dir + "class_AWEIsh.tif"
+    class_aweish = "%s/class_AWEIsh.tif" % out_dir
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(aweish_out,
                                                                      6, 2, 2,
                                                                      None)
@@ -70,7 +71,7 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     savi_raster = arcpy.ia.Plus(savi_out, aweish_land)
     savi_raster.save(savi_nowater)
 
-    class_savi = out_dir + "class_NDVI.tif"
+    class_savi = "%s/class_NDVI.tif" % out_dir
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(
         savi_nowater, 6, 2, 2, None)
     iso_unsupervised.save(class_savi)
@@ -92,18 +93,18 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     EBBI_raster = arcpy.ia.Plus(ebbi_out, savi_nv)
     EBBI_raster.save(ebbi_only)
 
-    class_ebbi = out_dir + "class_EBBI.tif"
+    class_ebbi = "%s/class_EBBI.tif" % out_dir
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(ebbi_only,
-                                                                     6, 2, 2,
+                                                                     5, 2, 2,
                                                                      None)
     iso_unsupervised.save(class_ebbi)
 
     built_up = "%s/built_up.tif" % out_dir
-    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value <= 3")
+    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value <= 2")
     builtup_raster.save(built_up)
 
     barren = "%s/barren.tif" % out_dir
-    barren_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value > 3")
+    barren_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value >= 3")
     barren_raster.save(barren)
 
     cst = 1
@@ -147,8 +148,5 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
         1,
         "LAST",
         "FIRST")
-
-    arcpy.Delete_managment(water, aweish_land, savi_nowater, high_veg,
-                           low_veg, savi_nv, barren, built_up, ebbi_only)
 
     print('Completed.')
