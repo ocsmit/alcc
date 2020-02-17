@@ -1,13 +1,16 @@
-### Automated Landcover Classification arcpy Function
+### Automated Landcover Classification using unsupervised classification methods
 
 **Author: Owen Smith, IESA, University of North Georgia**
 
-Parameters: 
+`alcc_arcpy(landsat_dir, out_dir, soil_brightness):` 
 * `landsat_dir 'str':` Input landsat data directory.
 * `out_dir: 'str':` Directory where all outputs will be saved.
 * `soil_brightness=0.5 'int':` Soil brightness factor for SAVI calculation.
 
 Final output `out_dir/ALCC.tif`
+
+`alcc_foss:`
+*WIP
 
 Citations: 
 - Gašparović, M., Zrinjski, M., & Gudelj, M. (2019). Automatic cost-effective 

@@ -11,7 +11,7 @@ import os
 from glob import glob
 
 
-def alcc(landsat_dir, out_dir, soil_brightness=0.5):
+def alcc_arcpy(landsat_dir, out_dir, soil_brightness=0.5):
     '''
     landsat_dir 'str': Input landsat data directory.
     out_dir: 'str':  Directory where all outputs will be saved.
