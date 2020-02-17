@@ -5,6 +5,7 @@
 Parameters: 
 * `landsat_dir 'str':` Input landsat data directory.
 * `out_dir: 'str':` Directory where all outputs will be saved.
+* `soil_brightness=0.5 'int':` Soil brightness factor for SAVI calculation.
 
 Final output `out_dir/ALCC.tif`
 

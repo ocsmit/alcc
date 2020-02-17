@@ -11,7 +11,7 @@ import os
 from glob import glob
 
 
-def alcc(landsat_dir, out_dir):
+def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     '''
     landsat_dir 'str': Input landsat data directory.
     out_dir: 'str':  Directory where all outputs will be saved.
@@ -24,8 +24,8 @@ def alcc(landsat_dir, out_dir):
 
     if not os.path.exists(landsat_dir):
         print('Input landsat directory does not exist.')
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    if not os.path.exists('in_memory'):
+        os.mkdir('in_memory')
 
     blue_path = glob(landsat_dir + "/*B2*")
     green_path = glob(landsat_dir + "/*B3*")
@@ -45,104 +45,110 @@ def alcc(landsat_dir, out_dir):
     tir = Raster(tir_path[0])
 
     # Output classifications
-    arvi_out = "%s/ARVI.tif" % out_dir
-    arvi = Float((nir - (2 * red) + blue) / nir + (2 * red) + blue)
-    arvi.save(arvi_out)
-
-    aweish_out = "%s/AWEIsh.tif" % out_dir
+    savi_out = "%s/SAVI.tif" % 'in_memory'
+    SAVI = Float(((nir - red) / (nir + red + soil_brightness)) *
+                 (1 + soil_brightness))
+    SAVI.save(savi_out)
+    
+    aweish_out = "%s/AWEIsh.tif" % 'in_memory'
     AWEIsh = Float((blue + 2.5 * green - 1.5 * (nir + swir1) - 0.25 * swir2) /
                    (blue + green + nir + swir1 + swir2))
     AWEIsh.save(aweish_out)
 
-    ebbi_out = "%s/EBBI.tif" % out_dir
+    ebbi_out = "%s/EBBI.tif" % 'in_memory'
     EBBI = Float(swir1 - nir / 10 * (SquareRoot(swir1 + tir)))
     EBBI.save(ebbi_out)
 
     # Water
-    class_aweish = "%s/class_AWEIsh.tif" % out_dir
+    class_aweish = "%s/class_AWEIsh.tif" % 'in_memory'
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(aweish_out,
-                                                                     6, 2, 2,
+                                                                     9, 2, 2,
                                                                      None)
     iso_unsupervised.save(class_aweish)
 
-    water = "%s/water.tif" % out_dir
-    aweish_land = "%s/AWEIsh_land.tif" % out_dir
+    water = "%s/water.tif" % 'in_memory'
+    aweish_land = "%s/AWEIsh_land.tif" % 'in_memory'
 
-    water_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value = 6")
+    water_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value = 9")
     water_raster.save(water)
-    land_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value < 6")
+    land_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value < 9")
     land_raster.save(aweish_land)
     land_raster = arcpy.sa.Reclassify(aweish_land, "Value",
-                                      "1 0;2 0;3 0;4 0;5 0", "DATA")
+                                      "1 0;2 0;3 0;4 0;5 0;6 0;7 0;8 0", "DATA")
     land_raster.save(aweish_land)
 
     # Vegetation
-    arvi_nowater = "%s/ARVI_nw.tif" % out_dir
-    arvi_raster = arcpy.ia.Plus(arvi_out, aweish_land)
-    arvi_raster.save(arvi_nowater)
+    savi_nowater = "%s/SAVI_nw.tif" % 'in_memory'
+    savi_raster = arcpy.ia.Plus(savi_out, aweish_land)
+    savi_raster.save(savi_nowater)
 
-    class_arvi = "%s/class_ARVI.tif" % out_dir
+    class_savi = "%s/class_SAVI.tif" % 'in_memory'
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(
-        arvi_nowater, 5, 2, 2, None)
-    iso_unsupervised.save(class_arvi)
+        savi_nowater, 6, 2, 2, None)
+    iso_unsupervised.save(class_savi)
 
-    low_veg = "%s/low_veg.tif" % out_dir
-    lowveg_raster = arcpy.sa.ExtractByAttributes(class_arvi, "Value = 2")
+    low_veg = "%s/low_veg.tif" % 'in_memory'
+    lowveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value = 3")
     lowveg_raster.save(low_veg)
 
-    high_veg = "%s/high_veg.tif" % out_dir
-    highveg_raster = arcpy.sa.ExtractByAttributes(class_arvi, "Value = 1")
+    high_veg = "%s/high_veg.tif" % 'in_memory'
+    highveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value > 3")
     highveg_raster.save(high_veg)
 
-    arvi_nv = "%s/arvi_nv.tif" % out_dir
-    noveg_raster = arcpy.sa.ExtractByAttributes(class_arvi, "Value > 2")
-    noveg_raster.save(arvi_nv)
+    savi_nv = "%s/savi_nv.tif" % 'in_memory'
+    noveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value < 3")
+    noveg_raster.save(savi_nv)
+
+    noveg_raster = arcpy.sa.Reclassify(savi_nv, "Value", "3 0; 2 0;1 0", 
+                                       "DATA")
+    savi_nv = '%s/savi_nv.tif' % 'in_memory'
+    noveg_raster.save(savi_nv)
 
     # Bare earth and built up
-    ebbi_only = "%s/EBBI_only.tif" % out_dir
-    EBBI_raster = arcpy.ia.Plus(ebbi_out, arvi_nv)
+    ebbi_only = "%s/EBBI_only.tif" % 'in_memory'
+    EBBI_raster = arcpy.ia.Plus(ebbi_out, savi_nv)
     EBBI_raster.save(ebbi_only)
 
-    class_ebbi = "%s/class_EBBI.tif" % out_dir
+    class_ebbi = "%s/class_EBBI.tif" % 'in_memory'
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(ebbi_only,
-                                                                     3, 2, 2,
+                                                                     6, 2, 2,
                                                                      None)
     iso_unsupervised.save(class_ebbi)
 
-    built_up = "%s/built_up.tif" % out_dir
-    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value = 3")
+    built_up = "%s/built_up.tif" % 'in_memory'
+    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value >= 3")
     builtup_raster.save(built_up)
 
-    barren = "%s/barren.tif" % out_dir
+    barren = "%s/barren.tif" % 'in_memory'
     barren_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value < 3")
     barren_raster.save(barren)
 
     cst = 1
-    water_re = "%s/water_re.tif" % out_dir
+    water_re = "%s/water_re.tif" % 'in_memory'
     water_reclass = Con(water, cst)
     water_reclass.save(water_re)
     print("Water: 1")
 
     cst = 2
-    low_veg_re = "%s/low_veg_re.tif" % out_dir
+    low_veg_re = "%s/low_veg_re.tif" % 'in_memory'
     lowveg_reclass = Con(low_veg, cst)
     lowveg_reclass.save(low_veg_re)
     print("Low vegetation: 2")
 
     cst = 3
-    high_veg_re = "%s/high_veg_re.tif" % out_dir
+    high_veg_re = "%s/high_veg_re.tif" % 'in_memory'
     highveg_reclass = Con(high_veg, cst)
     highveg_reclass.save(high_veg_re)
     print("High vegetation: 3")
 
     cst = 4
-    built_up_re = "%s/built_up_re.tif" % out_dir
+    built_up_re = "%s/built_up_re.tif" % 'in_memory'
     builtup_reclass = Con(built_up, cst)
     builtup_reclass.save(built_up_re)
     print("Built-up: 4")
 
     cst = 5
-    barren_re = "%s/barren_two_re.tif" % out_dir
+    barren_re = "%s/barren_two_re.tif" % 'in_memory'
     barren_reclass = Con(barren, cst)
     barren_reclass.save(barren_re)
     print("Barren: 5")
@@ -159,8 +165,4 @@ def alcc(landsat_dir, out_dir):
         "LAST",
         "FIRST")
 
-    del_rast = [water, aweish_land, arvi_nowater, high_veg, low_veg, arvi_nv,
-                barren, built_up, ebbi_only]
-    for i in del_rast:
-        arcpy.Delete_management(i)
     print('Completed.')
