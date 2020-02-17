@@ -9,6 +9,8 @@
 
 Final output `out_dir/ALCC.tif`
 
+Classification values still need tweaked.
+
 Plans to implement scikit learn clustering with numpy arrays to replace arcgis unsupervised isocluster.
 
 #### `alcc_foss:`
