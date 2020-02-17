@@ -55,26 +55,26 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
                    (blue + green + nir + swir1 + swir2))
     AWEIsh.save(aweish_out)
 
-    ebbi_out = "%s/EBBI.tif" % 'in_memory'
-    EBBI = Float(swir1 - nir / 10 * (SquareRoot(swir1 + tir)))
-    EBBI.save(ebbi_out)
+    nbli_out = "%s/NBLI.tif" % 'in_memory'
+    NBLI = Float(red - tir / red + tir)
+    NBLI.save(nbli_out)
 
     # Water
     class_aweish = "%s/class_AWEIsh.tif" % 'in_memory'
     iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(aweish_out,
-                                                                     9, 2, 2,
+                                                                     8, 2, 2,
                                                                      None)
     iso_unsupervised.save(class_aweish)
 
     water = "%s/water.tif" % 'in_memory'
     aweish_land = "%s/AWEIsh_land.tif" % 'in_memory'
 
-    water_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value = 9")
+    water_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value = 8")
     water_raster.save(water)
-    land_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value < 9")
+    land_raster = arcpy.sa.ExtractByAttributes(class_aweish, "Value < 8")
     land_raster.save(aweish_land)
     land_raster = arcpy.sa.Reclassify(aweish_land, "Value",
-                                      "1 0;2 0;3 0;4 0;5 0;6 0;7 0;8 0", "DATA")
+                                      "1 0;2 0;3 0;4 0;5 0;6 0;7 0", "DATA")
     land_raster.save(aweish_land)
 
     # Vegetation
@@ -99,28 +99,28 @@ def alcc(landsat_dir, out_dir, soil_brightness=0.5):
     noveg_raster = arcpy.sa.ExtractByAttributes(class_savi, "Value < 3")
     noveg_raster.save(savi_nv)
 
-    noveg_raster = arcpy.sa.Reclassify(savi_nv, "Value", "3 0; 2 0;1 0", 
+    noveg_raster = arcpy.sa.Reclassify(savi_nv, "Value", "2 0;1 0",
                                        "DATA")
     savi_nv = '%s/savi_nv.tif' % 'in_memory'
     noveg_raster.save(savi_nv)
 
     # Bare earth and built up
-    ebbi_only = "%s/EBBI_only.tif" % 'in_memory'
-    EBBI_raster = arcpy.ia.Plus(ebbi_out, savi_nv)
-    EBBI_raster.save(ebbi_only)
+    nbli_only = "%s/NBLI_only.tif" % 'in_memory'
+    NBLI_raster = arcpy.ia.Plus(nbli_out, savi_nv)
+    NBLI_raster.save(nbli_only)
 
-    class_ebbi = "%s/class_EBBI.tif" % 'in_memory'
-    iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(ebbi_only,
+    class_nbli = "%s/class_NBLI.tif" % 'in_memory'
+    iso_unsupervised = arcpy.sa.IsoClusterUnsupervisedClassification(nbli_only,
                                                                      6, 2, 2,
                                                                      None)
-    iso_unsupervised.save(class_ebbi)
+    iso_unsupervised.save(class_nbli)
 
     built_up = "%s/built_up.tif" % 'in_memory'
-    builtup_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value >= 3")
+    builtup_raster = arcpy.sa.ExtractByAttributes(class_nbli, "Value >= 3")
     builtup_raster.save(built_up)
 
     barren = "%s/barren.tif" % 'in_memory'
-    barren_raster = arcpy.sa.ExtractByAttributes(class_ebbi, "Value < 3")
+    barren_raster = arcpy.sa.ExtractByAttributes(class_nbli, "Value < 3")
     barren_raster.save(barren)
 
     cst = 1
