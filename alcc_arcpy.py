@@ -1,9 +1,9 @@
-################################################################################
-# Title: Automated Landcover Classification Function For arcpy                 #
-# Author: Owen Smith                                                           #
-# License: GNU v3.0                                                            #
-# Email: ocsmit7654@ung.edu                                                    #
-################################################################################
+#-------------------------------------------------------------------------------
+# Title: Automated Landcover Classification Function For arcpy
+# Author: Owen Smith
+# License: GNU v3.0
+# Email: ocsmit7654@ung.edu
+#-------------------------------------------------------------------------------
 
 import arcpy    
 from arcpy.sa import *
